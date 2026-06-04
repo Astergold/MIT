@@ -1,0 +1,174 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+
+@source "../src";
+
+@custom-variant dark (&:is(.dark *));
+
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* MITADT brand */
+  --color-mitadt-purple: var(--mitadt-purple);
+  --color-mitadt-purple-dark: var(--mitadt-purple-dark);
+  --color-mitadt-purple-light: var(--mitadt-purple-light);
+  --color-mitadt-purple-mid: var(--mitadt-purple-mid);
+  --color-mitadt-orange: var(--mitadt-orange);
+  --color-mitadt-orange-light: var(--mitadt-orange-light);
+  --color-mitadt-pink: var(--mitadt-pink);
+  --color-mitadt-red: var(--mitadt-red);
+  --color-mitadt-green: var(--mitadt-green);
+  --color-mitadt-bg-secondary: var(--mitadt-bg-secondary);
+  --color-mitadt-text-muted: var(--mitadt-text-muted);
+  --color-mitadt-border: var(--mitadt-border);
+
+  --font-display: "Raleway", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* MITADT palette (HEX -> oklch) */
+  --mitadt-purple: oklch(0.4 0.18 308);
+  --mitadt-purple-dark: oklch(0.28 0.16 309);
+  --mitadt-purple-light: oklch(0.45 0.2 340);
+  --mitadt-purple-mid: oklch(0.36 0.16 309);
+  --mitadt-orange: oklch(0.69 0.17 49);
+  --mitadt-orange-light: oklch(0.72 0.17 51);
+  --mitadt-pink: oklch(0.49 0.19 354);
+  --mitadt-red: oklch(0.6 0.24 18);
+  --mitadt-green: oklch(0.55 0.13 168);
+  --mitadt-bg-secondary: oklch(0.97 0.005 285);
+  --mitadt-text-primary: oklch(0.25 0 0);
+  --mitadt-text-muted: oklch(0.55 0 0);
+  --mitadt-border: oklch(0.92 0 0);
+
+  --background: oklch(1 0 0);
+  --foreground: var(--mitadt-text-primary);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--mitadt-text-primary);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--mitadt-text-primary);
+  --primary: var(--mitadt-purple);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: var(--mitadt-bg-secondary);
+  --secondary-foreground: var(--mitadt-purple-dark);
+  --muted: var(--mitadt-bg-secondary);
+  --muted-foreground: var(--mitadt-text-muted);
+  --accent: oklch(0.95 0.03 308);
+  --accent-foreground: var(--mitadt-purple);
+  --destructive: var(--mitadt-red);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: var(--mitadt-border);
+  --input: var(--mitadt-border);
+  --ring: var(--mitadt-purple);
+  --chart-1: var(--mitadt-purple);
+  --chart-2: var(--mitadt-orange);
+  --chart-3: var(--mitadt-pink);
+  --chart-4: var(--mitadt-green);
+  --chart-5: var(--mitadt-purple-light);
+  --sidebar: var(--mitadt-purple-dark);
+  --sidebar-foreground: oklch(0.99 0 0);
+  --sidebar-primary: var(--mitadt-orange);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.32 0.16 309);
+  --sidebar-accent-foreground: oklch(0.99 0 0);
+  --sidebar-border: oklch(0.32 0.16 309);
+  --sidebar-ring: var(--mitadt-orange);
+}
+
+@layer base {
+  * { border-color: var(--color-border); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility bg-mitadt-hero {
+  background-image: linear-gradient(135deg, #3d1165 0%, #602794 30%, #9f2176 60%, #dd7228 100%);
+}
+@utility bg-mitadt-topbar {
+  background-image: linear-gradient(90deg, #3d1165, #602794);
+}
+@utility nav-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+@utility live-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: live-pulse 1.6s infinite;
+}
+@utility scroll-hint {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    background: linear-gradient(to left, rgba(255,255,255,0.95), transparent);
+  }
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+  70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
