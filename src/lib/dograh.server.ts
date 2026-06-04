@@ -29,13 +29,11 @@ export async function dograhFetch<T = unknown>(
   const { base, key } = getConfig();
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers: Record<string, string> = {
-    "X-API-Key": key,
+    Authorization: `Bearer ${key}`,
     Accept: "application/json",
+    "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
-  if (init.body && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
-  }
   let res: Response;
   try {
     res = await fetch(url, { ...init, headers });

@@ -36,6 +36,16 @@ export const getAgents = createServerFn({ method: "GET" }).handler(
   },
 );
 
+// Normalize a campaign: the live API returns `state` where the UI expects `status`.
+// Map it here so the rest of the app keeps using `status`.
+const normalizeCampaign = (c: Campaign): Campaign => {
+  const cj = c as Campaign & { state?: Campaign["status"] };
+  if (!cj.status && cj.state) {
+    return { ...cj, status: cj.state };
+  }
+  return cj;
+};
+
 // ── Campaigns list ─────────────────────────────────────────────
 export const getCampaigns = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -43,7 +53,8 @@ export const getCampaigns = createServerFn({ method: "GET" }).handler(
     const data = await dograhFetch<
       Campaign[] | { campaigns?: Campaign[] }
     >("/campaign/");
-    return Array.isArray(data) ? data : (data.campaigns ?? []);
+    const list = Array.isArray(data) ? data : (data.campaigns ?? []);
+    return list.map(normalizeCampaign);
   },
 );
 
@@ -54,7 +65,8 @@ export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    return dograhFetch<Campaign>(`/campaign/${data.id}`);
+    const c = await dograhFetch<Campaign>(`/campaign/${data.id}`);
+    return normalizeCampaign(c);
   });
 
 // ── Campaign progress (polls every 30s on detail page) ─────────
