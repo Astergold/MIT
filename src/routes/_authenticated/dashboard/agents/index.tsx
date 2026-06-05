@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
-import { getAgents } from "@/lib/dograh.functions";
+import { getAgents } from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -29,7 +29,7 @@ function AgentsPage() {
       />
       {q.error && <ErrorAlert error={q.error} onRetry={() => q.refetch()} />}
       {!q.isLoading && agents.length === 0 && !q.error && (
-        <EmptyState icon={Bot} title="No agents configured" description="Voice agents are configured directly on the Dograh server." />
+        <EmptyState icon={Bot} title="No agents configured" description="Voice agents are configured directly on the AlphaAI server." />
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         {agents.map((a) => (

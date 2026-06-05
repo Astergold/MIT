@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { dograhFetch } from "./dograh.server";
+import { alphaAIFetch } from "./alphaai.server";
 import { requireUser } from "./session.server";
 import type {
   Agent,
@@ -9,14 +9,14 @@ import type {
   HealthResponse,
   OrgRunsResponse,
   Run,
-} from "@/types/dograh";
+} from "@/types/alphaai";
 
 // ── Health ─────────────────────────────────────────────────────
 export const getHealth = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
     try {
-      const data = await dograhFetch<HealthResponse>("/health");
+      const data = await alphaAIFetch<HealthResponse>("/health");
       return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: (e as Error).message };
@@ -28,7 +28,7 @@ export const getHealth = createServerFn({ method: "GET" }).handler(
 export const getAgents = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
-    const data = await dograhFetch<Agent[] | { workflows?: Agent[] }>(
+    const data = await alphaAIFetch<Agent[] | { workflows?: Agent[] }>(
       "/workflow/fetch",
     );
     const list = Array.isArray(data) ? data : (data.workflows ?? []);
@@ -50,7 +50,7 @@ const normalizeCampaign = (c: Campaign): Campaign => {
 export const getCampaigns = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
-    const data = await dograhFetch<
+    const data = await alphaAIFetch<
       Campaign[] | { campaigns?: Campaign[] }
     >("/campaign/");
     const list = Array.isArray(data) ? data : (data.campaigns ?? []);
@@ -65,7 +65,7 @@ export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    const c = await dograhFetch<Campaign>(`/campaign/${data.id}`);
+    const c = await alphaAIFetch<Campaign>(`/campaign/${data.id}`);
     return normalizeCampaign(c);
   });
 
@@ -74,7 +74,7 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    return dograhFetch<CampaignProgress>(`/campaign/${data.id}/progress`);
+    return alphaAIFetch<CampaignProgress>(`/campaign/${data.id}/progress`);
   });
 
 // ── Campaign runs (leads table) ────────────────────────────────
@@ -82,7 +82,7 @@ export const getCampaignRuns = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    const res = await dograhFetch<Run[] | OrgRunsResponse>(
+    const res = await alphaAIFetch<Run[] | OrgRunsResponse>(
       `/campaign/${data.id}/runs`,
     );
     return Array.isArray(res) ? res : res.runs;
@@ -98,7 +98,7 @@ export const controlCampaign = createServerFn({ method: "POST" })
   .inputValidator((d) => actionInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    await dograhFetch(`/campaign/${data.id}/${data.action}`, {
+    await alphaAIFetch(`/campaign/${data.id}/${data.action}`, {
       method: "POST",
     });
     return { ok: true as const };
@@ -122,7 +122,7 @@ export const createCampaign = createServerFn({ method: "POST" })
   .inputValidator((d) => CreateCampaignInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    return dograhFetch<Campaign>("/campaign/", {
+    return alphaAIFetch<Campaign>("/campaign/", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -149,7 +149,7 @@ export const getRuns = createServerFn({ method: "GET" })
     Object.entries(data).forEach(([k, v]) => {
       if (v !== undefined && v !== "") params.set(k, String(v));
     });
-    return dograhFetch<OrgRunsResponse>(
+    return alphaAIFetch<OrgRunsResponse>(
       `/organizations/usage/runs?${params.toString()}`,
     );
   });
@@ -165,7 +165,7 @@ export const getRun = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireUser();
     const wf = data.workflowId ? `?workflow_id=${data.workflowId}` : "";
-    return dograhFetch<Run>(`/run/${data.runId}${wf}`);
+    return alphaAIFetch<Run>(`/run/${data.runId}${wf}`);
   });
 
 // ── Upload presign ────────────────────────────────────────────
@@ -178,7 +178,7 @@ export const presignUpload = createServerFn({ method: "POST" })
   .inputValidator((d) => PresignInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    return dograhFetch<{ upload_url: string; file_key: string }>(
+    return alphaAIFetch<{ upload_url: string; file_key: string }>(
       "/upload/presign",
       { method: "POST", body: JSON.stringify(data) },
     );
@@ -191,7 +191,7 @@ export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((d) => TranscriptInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    const raw = await dograhFetch<any>(
+    const raw = await alphaAIFetch<any>(
       `/public/download/workflow/${data.token}/transcript`,
     );
     return { transcript: raw as any };

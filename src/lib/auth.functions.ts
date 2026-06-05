@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSessionManager, getCurrentUser } from "./session.server";
-import type { SessionUser } from "@/types/dograh";
+import type { SessionUser } from "@/types/alphaai";
 
 const LoginInput = z.object({
   username: z.string().trim().min(1).max(100),

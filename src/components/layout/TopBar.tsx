@@ -1,5 +1,5 @@
 import { Menu } from "lucide-react";
-import type { SessionUser } from "@/types/dograh";
+import type { SessionUser } from "@/types/alphaai";
 
 export function TopBar({
   title,

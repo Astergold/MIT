@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Eye } from "lucide-react";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
-import { getRuns } from "@/lib/dograh.functions";
+import { getRuns } from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -123,7 +123,7 @@ function CallsPage() {
             <span>
               Showing {(page - 1) * DASHBOARD_CONFIG.DEFAULT_PAGE_SIZE + 1}–
               {Math.min(page * DASHBOARD_CONFIG.DEFAULT_PAGE_SIZE, data.total_count)} of {data.total_count} calls ·
-              Total duration {formatDuration(data.total_duration_seconds)} · {data.total_dograh_tokens.toLocaleString()} tokens
+              Total duration {formatDuration(data.total_duration_seconds)} · {data.total_alphaai_tokens.toLocaleString()} tokens
             </span>
             <div className="flex gap-1">
               <button

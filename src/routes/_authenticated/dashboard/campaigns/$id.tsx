@@ -9,7 +9,7 @@ import {
   getCampaignProgress,
   getCampaignRuns,
   controlCampaign,
-} from "@/lib/dograh.functions";
+} from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Upload, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
-import { getAgents, presignUpload, createCampaign } from "@/lib/dograh.functions";
+import { getAgents, presignUpload, createCampaign } from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 

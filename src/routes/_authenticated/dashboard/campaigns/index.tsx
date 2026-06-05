@@ -4,14 +4,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Play, Pause, Eye, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
-import { getCampaigns, controlCampaign } from "@/lib/dograh.functions";
+import { getCampaigns, controlCampaign } from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RefreshIndicator } from "@/components/ui/RefreshIndicator";
 import { formatDate } from "@/lib/utils-format";
-import type { Campaign } from "@/types/dograh";
+import type { Campaign } from "@/types/alphaai";
 
 export const Route = createFileRoute("/_authenticated/dashboard/campaigns/")({
   head: () => ({

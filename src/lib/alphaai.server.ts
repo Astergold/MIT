@@ -1,28 +1,28 @@
 /**
- * Server-only Dograh API client.
+ * Server-only AlphaAI API client.
  * NEVER import this file from client code. All env reads happen here.
- * `process.env.DOGRAH_*` is injected at request time — read inside calls.
+ * `process.env.ALPHAAI_*` is injected at request time — read inside calls.
  */
 
-export class DograhError extends Error {
+export class AlphaAIError extends Error {
   constructor(message: string, public status?: number) {
     super(message);
   }
 }
 
 function getConfig() {
-  const base = process.env.DOGRAH_API_BASE_URL;
-  const key = process.env.DOGRAH_API_KEY;
+  const base = process.env.ALPHAAI_API_BASE_URL;
+  const key = process.env.ALPHAAI_API_KEY;
   if (!base || !key) {
-    throw new DograhError(
-      "Dograh credentials not configured (DOGRAH_API_BASE_URL / DOGRAH_API_KEY)",
+    throw new AlphaAIError(
+      "AlphaAI credentials not configured (ALPHAAI_API_BASE_URL / ALPHAAI_API_KEY)",
       500,
     );
   }
   return { base: base.replace(/\/$/, ""), key };
 }
 
-export async function dograhFetch<T = unknown>(
+export async function alphaAIFetch<T = unknown>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
@@ -38,8 +38,8 @@ export async function dograhFetch<T = unknown>(
   try {
     res = await fetch(url, { ...init, headers });
   } catch (e) {
-    throw new DograhError(
-      `Could not reach Dograh server: ${(e as Error).message}`,
+    throw new AlphaAIError(
+      `Could not reach AlphaAI server: ${(e as Error).message}`,
       503,
     );
   }
@@ -57,8 +57,8 @@ export async function dograhFetch<T = unknown>(
       body && typeof body === "object" && "detail" in body
         ? (body as { detail: unknown }).detail
         : body;
-    throw new DograhError(
-      typeof detail === "string" ? detail : `Dograh ${res.status}`,
+    throw new AlphaAIError(
+      typeof detail === "string" ? detail : `AlphaAI ${res.status}`,
       res.status,
     );
   }

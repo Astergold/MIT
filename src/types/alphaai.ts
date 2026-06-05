@@ -53,7 +53,7 @@ export interface OrgRunsResponse {
   runs: Run[];
   total_count: number;
   total_duration_seconds: number;
-  total_dograh_tokens: number;
+  total_alphaai_tokens: number;
   page: number;
   limit: number;
   total_pages: number;

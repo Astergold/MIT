@@ -4,7 +4,7 @@ import { ArrowUpDown, Download, Search } from "lucide-react";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { formatDate, formatDuration } from "@/lib/utils-format";
-import type { Run } from "@/types/dograh";
+import type { Run } from "@/types/alphaai";
 
 function leadStatus(r: Run) {
   if (!r.is_completed) {

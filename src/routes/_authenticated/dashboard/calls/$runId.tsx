@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Phone, Clock, DollarSign, Calendar, Bot, Download } from "lucide-react";
-import { getRun, getTranscript } from "@/lib/dograh.functions";
+import { getRun, getTranscript } from "@/lib/alphaai.functions";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";

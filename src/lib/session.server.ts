@@ -1,5 +1,5 @@
 import { useSession } from "@tanstack/react-start/server";
-import type { SessionUser } from "@/types/dograh";
+import type { SessionUser } from "@/types/alphaai";
 
 export interface SessionData {
   user?: SessionUser;

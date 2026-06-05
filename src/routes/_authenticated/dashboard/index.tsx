@@ -12,7 +12,7 @@ import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import {
   getCampaigns,
   getRuns,
-} from "@/lib/dograh.functions";
+} from "@/lib/alphaai.functions";
 import { StatCard } from "@/components/ui/StatCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";

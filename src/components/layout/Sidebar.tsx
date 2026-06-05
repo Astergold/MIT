@@ -11,9 +11,9 @@ import {
   X,
 } from "lucide-react";
 import { logoutFn } from "@/lib/auth.functions";
-import { getHealth } from "@/lib/dograh.functions";
+import { getHealth } from "@/lib/alphaai.functions";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
-import type { SessionUser } from "@/types/dograh";
+import type { SessionUser } from "@/types/alphaai";
 
 type NavItem = {
   to: "/dashboard" | "/dashboard/campaigns" | "/dashboard/calls" | "/dashboard/agents";
