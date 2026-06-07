@@ -172,7 +172,7 @@ export const getRuns = createServerFn({ method: "GET" })
 // ── Single run detail ─────────────────────────────────────────
 const RunDetailInput = z.object({
   runId: z.union([z.string(), z.number()]),
-  workflowId: z.union([z.string(), z.number()]).optional(),
+  workflowId: z.union([z.string(), z.number()]),
 });
 
 export const getRun = createServerFn({ method: "GET" })
@@ -181,7 +181,7 @@ export const getRun = createServerFn({ method: "GET" })
     await requireUser();
     const token = await getToken();
     const wf = data.workflowId ? `?workflow_id=${data.workflowId}` : "";
-    return alphaAIFetch<Run>(`/run/${data.runId}${wf}`, {}, token);
+    return alphaAIFetch<Run>(`/workflow/${data.workflowId}/runs/${data.runId}`, {}, token);
   });
 
 // ── Upload presign ────────────────────────────────────────────
