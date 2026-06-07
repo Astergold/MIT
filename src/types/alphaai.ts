@@ -78,4 +78,5 @@ export interface SessionUser {
   username: string;
   name: string;
   role: "admin";
+  token?: string;
 }

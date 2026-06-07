@@ -22,7 +22,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const login = useServerFn(loginFn);
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await login({ data: { username: username.trim(), password } });
+      await login({ data: { email: email.trim(), password } });
       await navigate({ to: "/dashboard" });
     } catch (err) {
       setError(
@@ -76,13 +76,13 @@ function LoginPage() {
           </p>
 
           <label className="mt-6 block text-sm font-medium text-mitadt-text-primary">
-            Username
+            Email
             <input
               type="text"
-              autoComplete="username"
+              autoComplete="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1.5 w-full rounded-lg border border-mitadt-border px-3 py-2.5 outline-none focus:border-mitadt-purple focus:ring-2 focus:ring-mitadt-purple/20"
               disabled={busy}
             />

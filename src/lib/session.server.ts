@@ -3,6 +3,7 @@ import type { SessionUser } from "@/types/alphaai";
 
 export interface SessionData {
   user?: SessionUser;
+  token?: string;
 }
 
 function getSessionConfig() {
@@ -34,10 +35,26 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   return session.data.user ?? null;
 }
 
+export async function getToken(): Promise<string | null> {
+  const session = await getSessionManager();
+  return session.data.token ?? null;
+}
+
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) {
     throw new Response("Unauthorized", { status: 401 });
   }
   return user;
+}
+
+export async function setToken(token: string) {
+  const session = await getSessionManager();
+  await session.update({ token });
+}
+
+export async function clearToken() {
+  const session = await getSessionManager();
+  const currentData = session.data;
+  await session.update({ token: undefined, user: undefined });
 }
