@@ -125,12 +125,12 @@ function CampaignDetail() {
       {campQ.error && <ErrorAlert error={campQ.error} onRetry={() => campQ.refetch()} />}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Total Contacts" value={total} loading={progQ.isLoading} />
-        <StatCard label="Completed" value={completed} loading={progQ.isLoading} />
+        <StatCard label="Total Contacts" value={p?.total_contacts ?? 0} loading={progQ.isLoading} />
+        <StatCard label="Completed" value={p?.completed ?? 0} loading={progQ.isLoading} />
         <StatCard label="Pending" value={p?.pending ?? 0} loading={progQ.isLoading} />
         <StatCard
           label="Success Rate"
-          value={`${Math.round((p?.success_rate ?? 0) * 100) / 100}%`}
+          value={`${Math.round((p?.success_rate ?? 0) * 100)}%`}
           loading={progQ.isLoading}
         />
       </div>

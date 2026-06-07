@@ -1,10 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpDown, Download, Search } from "lucide-react";
+import { ArrowUpDown, Download, Search, Play, Pause } from "lucide-react";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { formatDate, formatDuration } from "@/lib/utils-format";
 import type { Run } from "@/types/alphaai";
+
+const RECORDING_BASE = "https://backend.laveric.com/api/v1/public/download/workflow";
+
+function recordingUrl(r: Run): string | null {
+  const token = r.public_access_token;
+  if (!token) return null;
+  return `${RECORDING_BASE}/${token}/recording`;
+}
 
 function leadStatus(r: Run) {
   if (!r.is_completed) {
@@ -139,6 +147,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                 duration_s: r.call_duration_seconds,
                 disposition: r.disposition,
                 created_at: r.created_at,
+                recording_url: recordingUrl(r) ?? "",
                 ...(r.initial_context ?? {}),
                 ...Object.fromEntries(
                   Object.entries(r.gathered_context ?? {}).map(([k, v]) => [
@@ -163,6 +172,8 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
               <th className="px-3 py-3">Phone</th>
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3">Duration</th>
+              <th className="px-3 py-3">Recording</th>
+              <th className="px-3 py-3">Recording</th>
               <th
                 className="cursor-pointer px-3 py-3"
                 onClick={() => toggleSort("created_at")}
@@ -221,6 +232,21 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                   </td>
                   <td className="px-3 py-2">
                     {formatDuration(r.call_duration_seconds)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {recordingUrl(r) ? (
+                      <a
+                        href={recordingUrl(r)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center rounded p-1 text-mitadt-purple hover:bg-mitadt-purple/10"
+                        title="Play recording"
+                      >
+                        <Play className="h-4 w-4" />
+                      </a>
+                    ) : (
+                      <span className="text-mitadt-text-muted">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs">
                     {formatDate(r.created_at)}
