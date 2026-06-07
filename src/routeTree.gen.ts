@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as RWorkflowIdRunIdRouteImport } from './routes/r/$workflowId.$runId'
 import { Route as AuthenticatedDashboardCampaignsIndexRouteImport } from './routes/_authenticated/dashboard/campaigns/index'
 import { Route as AuthenticatedDashboardCallsIndexRouteImport } from './routes/_authenticated/dashboard/calls/index'
 import { Route as AuthenticatedDashboardAgentsIndexRouteImport } from './routes/_authenticated/dashboard/agents/index'
@@ -46,6 +47,11 @@ const AuthenticatedDashboardIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const RWorkflowIdRunIdRoute = RWorkflowIdRunIdRouteImport.update({
+  id: '/r/$workflowId/$runId',
+  path: '/r/$workflowId/$runId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedDashboardCampaignsIndexRoute =
   AuthenticatedDashboardCampaignsIndexRouteImport.update({
     id: '/campaigns/',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/r/$workflowId/$runId': typeof RWorkflowIdRunIdRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/dashboard/calls/$runId': typeof AuthenticatedDashboardCallsRunIdRoute
   '/dashboard/campaigns/$id': typeof AuthenticatedDashboardCampaignsIdRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/r/$workflowId/$runId': typeof RWorkflowIdRunIdRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/dashboard/calls/$runId': typeof AuthenticatedDashboardCallsRunIdRoute
   '/dashboard/campaigns/$id': typeof AuthenticatedDashboardCampaignsIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/r/$workflowId/$runId': typeof RWorkflowIdRunIdRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/dashboard/calls/$runId': typeof AuthenticatedDashboardCallsRunIdRoute
   '/_authenticated/dashboard/campaigns/$id': typeof AuthenticatedDashboardCampaignsIdRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/dashboard'
+    | '/r/$workflowId/$runId'
     | '/dashboard/'
     | '/dashboard/calls/$runId'
     | '/dashboard/campaigns/$id'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/r/$workflowId/$runId'
     | '/dashboard'
     | '/dashboard/calls/$runId'
     | '/dashboard/campaigns/$id'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/dashboard'
+    | '/r/$workflowId/$runId'
     | '/_authenticated/dashboard/'
     | '/_authenticated/dashboard/calls/$runId'
     | '/_authenticated/dashboard/campaigns/$id'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  RWorkflowIdRunIdRoute: typeof RWorkflowIdRunIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/'
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/r/$workflowId/$runId': {
+      id: '/r/$workflowId/$runId'
+      path: '/r/$workflowId/$runId'
+      fullPath: '/r/$workflowId/$runId'
+      preLoaderRoute: typeof RWorkflowIdRunIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/campaigns/': {
       id: '/_authenticated/dashboard/campaigns/'
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  RWorkflowIdRunIdRoute: RWorkflowIdRunIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

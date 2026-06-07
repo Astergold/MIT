@@ -323,7 +323,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                 duration_s: r.call_duration_seconds,
                 disposition: r.disposition,
                 created_at: r.created_at,
-                recording_url: r.recording_url ?? "",
+                recording_url: r.recording_url
+                  ? `${window.location.origin}/r/${r.workflow_id}/${r.id}`
+                  : "",
                 ...(r.initial_context ?? {}),
                 ...Object.fromEntries(
                   Object.entries(r.gathered_context ?? {}).map(([k, v]) => [
