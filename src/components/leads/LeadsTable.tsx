@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { formatDate, formatDuration } from "@/lib/utils-format";
-import { getRun } from "@/lib/alphaai.functions";
+import { getRun, getTranscript } from "@/lib/alphaai.functions";
 import type { Run } from "@/types/alphaai";
 
 function leadStatus(r: Run) {
@@ -38,70 +38,169 @@ function exportCsv(filename: string, rows: Record<string, any>[]) {
   URL.revokeObjectURL(a.href);
 }
 
-interface AudioPopupProps {
+interface RunModalProps {
   run: Run;
   onClose: () => void;
 }
 
-function AudioPopup({ run, onClose }: AudioPopupProps) {
+function RunModal({ run, onClose }: RunModalProps) {
   const getRunFn = useServerFn(getRun);
+  const getTrFn = useServerFn(getTranscript);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [runDetails, setRunDetails] = useState<Run | null>(null);
+  const [transcript, setTranscript] = useState<any[] | null>(null);
 
-  // Fetch run details to get recording_public_url
+  const customerName = (run.initial_context?.customer_name as string) ?? "Unknown";
+  const phone = run.called_number ?? (run.initial_context?.phone_number as string) ?? "—";
+
+  // Fetch run details and transcript
   useMemo(() => {
     let cancelled = false;
-    async function fetchAudio() {
+    async function fetchRun() {
       try {
         const result = await getRunFn({
           data: { runId: run.id, workflowId: run.workflow_id },
         });
         if (cancelled) return;
-        const recordingUrl = (result as any)?.recording_public_url;
-        if (recordingUrl) {
-          setAudioUrl(recordingUrl);
-        } else {
-          setError("No recording available");
+        setRunDetails(result as Run);
+
+        // Fetch transcript if available
+        if (result.public_access_token) {
+          try {
+            const trResult = await getTrFn({ data: { token: result.public_access_token } });
+            const messages = Array.isArray(trResult?.transcript)
+              ? trResult.transcript
+              : Array.isArray(trResult?.messages)
+              ? trResult.messages
+              : [];
+
+            if (!cancelled && messages.length > 0) {
+              setTranscript(messages);
+            }
+          } catch (e) {
+            console.error("Failed to load transcript:", e);
+          }
         }
       } catch (e) {
         if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load");
+        setError(e instanceof Error ? e.message : "Failed to load run details");
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    fetchAudio();
+    fetchRun();
     return () => { cancelled = true; };
   }, [run.id, run.workflow_id]);
 
-  const customerName = (run.initial_context?.customer_name as string) ?? "Unknown";
-  const phone = run.called_number ?? (run.initial_context?.phone_number as string) ?? "—";
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="rounded-xl border border-mitadt-border bg-white p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-mitadt-purple" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="rounded-xl border border-mitadt-border bg-white p-8 max-w-md">
+          <h2 className="font-semibold text-mitadt-text-primary">Error</h2>
+          <p className="text-mitadt-text-muted mt-2">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 rounded-lg border border-mitadt-border bg-white p-4 shadow-lg">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm">
-          <span className="font-medium text-mitadt-purple-dark">{customerName}</span>
-          <span className="mx-2 text-mitadt-text-muted">·</span>
-          <span className="font-mono text-mitadt-text-muted">{phone}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-w-3xl max-h-[80vh] w-full mx-4 rounded-xl border border-mitadt-border bg-white shadow-lg overflow-hidden">
+        <div className="p-6 border-b border-mitadt-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-mitadt-purple-dark">{customerName}</span>
+              <span className="text-mitadt-text-muted">·</span>
+              <span className="font-mono text-mitadt-text-muted">{phone}</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded p-1 text-mitadt-text-muted hover:bg-mitadt-bg-secondary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded p-1 text-mitadt-text-muted hover:bg-mitadt-bg-secondary"
-        >
-          <X className="h-4 w-4" />
-        </button>
+
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(80vh-200px)]">
+          {/* Section 1: Audio Player */}
+          {runDetails?.recording_public_url && (
+            <div>
+              <audio controls className="w-full" src={runDetails.recording_public_url} />
+            </div>
+          )}
+
+          {/* Section 2: Transcript */}
+          {transcript && transcript.length > 0 ? (
+            <div>
+              <h3 className="font-semibold text-mitadt-text-primary mb-3">Transcript</h3>
+              <div className="space-y-2">
+                {transcript.map((msg, i) => {
+                  const role = msg.role || msg.speaker || "agent";
+                  const content = msg.text || msg.content || msg.message || "";
+                  const isAgent = role === "agent";
+                  return (
+                    <div
+                      key={i}
+                      className={`text-xs max-w-[80%] ${
+                        isAgent
+                          ? "bg-mitadt-bg-secondary text-mitadt-text-primary ml-auto rounded-lg px-3 py-2"
+                          : "bg-mitadt-purple text-white mr-auto rounded-lg px-3 py-2"
+                      }`}
+                    >
+                      <p className="mb-1">{content}</p>
+                      {msg.timestamp && (
+                        <p className="text-[0.75rem] opacity-70">
+                          {new Date(msg.timestamp).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-mitadt-text-muted">
+              {runDetails?.transcript_public_url ? "No transcript available" : "Transcript not available"}
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: Action Buttons */}
+        <div className="border-t border-mitadt-border p-4 flex gap-3">
+          {runDetails?.recording_public_url && (
+            <a
+              href={runDetails.recording_public_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-mitadt-purple px-4 py-2 text-sm font-semibold text-white hover:bg-mitadt-purple-dark"
+            >
+              <Download className="h-4 w-4" /> Download Recording
+            </a>
+          )}
+          {runDetails?.transcript_public_url && (
+            <a
+              href={runDetails.transcript_public_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-mitadt-border px-4 py-2 text-sm font-semibold text-mitadt-text-primary hover:bg-mitadt-bg-secondary"
+            >
+              <Download className="h-4 w-4" /> Download Transcript
+            </a>
+          )}
+        </div>
       </div>
-      {loading ? (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-6 w-6 animate-spin text-mitadt-purple" />
-        </div>
-      ) : error ? (
-        <div className="py-2 text-sm text-mitadt-red">{error}</div>
-      ) : audioUrl ? (
-        <audio controls className="w-full" src={audioUrl} />
-      ) : null}
     </div>
   );
 }
@@ -180,13 +279,16 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
         />
       );
     }
+    if (typeof v === "object") {
+      return <span className="text-xs">{JSON.stringify(v)}</span>;
+    }
     return <span>{String(v)}</span>;
   }
 
   return (
     <div className="overflow-hidden rounded-xl border border-mitadt-border bg-white shadow-sm">
       {audioRun && (
-        <AudioPopup run={audioRun} onClose={() => setAudioRun(null)} />
+        <RunModal run={audioRun} onClose={() => setAudioRun(null)} />
       )}
       <div className="flex flex-col items-stretch gap-3 border-b border-mitadt-border p-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
