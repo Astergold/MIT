@@ -1,18 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpDown, Download, Search, Play, Pause } from "lucide-react";
+import { ArrowUpDown, Download, Search, Play, X, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
 import { formatDate, formatDuration } from "@/lib/utils-format";
+import { getRun } from "@/lib/alphaai.functions";
 import type { Run } from "@/types/alphaai";
-
-const RECORDING_BASE = "https://backend.laveric.com/api/v1/public/download/workflow";
-
-function recordingUrl(r: Run): string | null {
-  const token = r.public_access_token;
-  if (!token) return null;
-  return `${RECORDING_BASE}/${token}/recording`;
-}
 
 function leadStatus(r: Run) {
   if (!r.is_completed) {
@@ -44,11 +38,80 @@ function exportCsv(filename: string, rows: Record<string, any>[]) {
   URL.revokeObjectURL(a.href);
 }
 
+interface AudioPopupProps {
+  run: Run;
+  onClose: () => void;
+}
+
+function AudioPopup({ run, onClose }: AudioPopupProps) {
+  const getRunFn = useServerFn(getRun);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  // Fetch run details to get recording_public_url
+  useMemo(() => {
+    let cancelled = false;
+    async function fetchAudio() {
+      try {
+        const result = await getRunFn({
+          data: { runId: run.id, workflowId: run.workflow_id },
+        });
+        if (cancelled) return;
+        const recordingUrl = (result as any)?.recording_public_url;
+        if (recordingUrl) {
+          setAudioUrl(recordingUrl);
+        } else {
+          setError("No recording available");
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Failed to load");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchAudio();
+    return () => { cancelled = true; };
+  }, [run.id, run.workflow_id]);
+
+  const customerName = (run.initial_context?.customer_name as string) ?? "Unknown";
+  const phone = run.called_number ?? (run.initial_context?.phone_number as string) ?? "—";
+
+  return (
+    <div className="fixed bottom-4 left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 rounded-lg border border-mitadt-border bg-white p-4 shadow-lg">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-sm">
+          <span className="font-medium text-mitadt-purple-dark">{customerName}</span>
+          <span className="mx-2 text-mitadt-text-muted">·</span>
+          <span className="font-mono text-mitadt-text-muted">{phone}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded p-1 text-mitadt-text-muted hover:bg-mitadt-bg-secondary"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-6 w-6 animate-spin text-mitadt-purple" />
+        </div>
+      ) : error ? (
+        <div className="py-2 text-sm text-mitadt-red">{error}</div>
+      ) : audioUrl ? (
+        <audio controls className="w-full" src={audioUrl} />
+      ) : null}
+    </div>
+  );
+}
+
 export function LeadsTable({ runs }: { runs: Run[] }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [audioRun, setAudioRun] = useState<Run | null>(null);
   const pageSize = DASHBOARD_CONFIG.DEFAULT_PAGE_SIZE;
 
   const dynamicKeys = useMemo(() => {
@@ -122,6 +185,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-mitadt-border bg-white shadow-sm">
+      {audioRun && (
+        <AudioPopup run={audioRun} onClose={() => setAudioRun(null)} />
+      )}
       <div className="flex flex-col items-stretch gap-3 border-b border-mitadt-border p-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mitadt-text-muted" />
@@ -147,7 +213,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                 duration_s: r.call_duration_seconds,
                 disposition: r.disposition,
                 created_at: r.created_at,
-                recording_url: recordingUrl(r) ?? "",
+                recording_url: r.recording_url ?? "",
                 ...(r.initial_context ?? {}),
                 ...Object.fromEntries(
                   Object.entries(r.gathered_context ?? {}).map(([k, v]) => [
@@ -172,7 +238,6 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
               <th className="px-3 py-3">Phone</th>
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3">Duration</th>
-              <th className="px-3 py-3">Recording</th>
               <th className="px-3 py-3">Recording</th>
               <th
                 className="cursor-pointer px-3 py-3"
@@ -204,6 +269,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
           <tbody>
             {paged.map((r, i) => {
               const s = leadStatus(r);
+              const hasRecording = r.public_access_token && r.recording_url;
               return (
                 <tr
                   key={r.id}
@@ -234,16 +300,14 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                     {formatDuration(r.call_duration_seconds)}
                   </td>
                   <td className="px-3 py-2">
-                    {recordingUrl(r) ? (
-                      <a
-                        href={recordingUrl(r)!}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {hasRecording ? (
+                      <button
+                        onClick={() => setAudioRun(r)}
                         className="inline-flex items-center justify-center rounded p-1 text-mitadt-purple hover:bg-mitadt-purple/10"
                         title="Play recording"
                       >
                         <Play className="h-4 w-4" />
-                      </a>
+                      </button>
                     ) : (
                       <span className="text-mitadt-text-muted">—</span>
                     )}
