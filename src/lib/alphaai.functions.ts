@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { alphaAIFetch } from "./alphaai.server";
-import { requireUser } from "./session.server";
+import { requireUser, getToken } from "./session.server";
 import type {
   Agent,
   Campaign,
@@ -16,7 +16,8 @@ export const getHealth = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
     try {
-      const data = await alphaAIFetch<HealthResponse>("/health");
+      const token = await getToken();
+      const data = await alphaAIFetch<HealthResponse>("/health", {}, token);
       return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: (e as Error).message };
@@ -28,8 +29,11 @@ export const getHealth = createServerFn({ method: "GET" }).handler(
 export const getAgents = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
+    const token = await getToken();
     const data = await alphaAIFetch<Agent[] | { workflows?: Agent[] }>(
       "/workflow/fetch",
+      {},
+      token,
     );
     const list = Array.isArray(data) ? data : (data.workflows ?? []);
     return list;
@@ -50,9 +54,10 @@ const normalizeCampaign = (c: Campaign): Campaign => {
 export const getCampaigns = createServerFn({ method: "GET" }).handler(
   async () => {
     await requireUser();
+    const token = await getToken();
     const data = await alphaAIFetch<
       Campaign[] | { campaigns?: Campaign[] }
-    >("/campaign/");
+    >("/campaign/", {}, token);
     const list = Array.isArray(data) ? data : (data.campaigns ?? []);
     return list.map(normalizeCampaign);
   },
@@ -65,7 +70,8 @@ export const getCampaign = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    const c = await alphaAIFetch<Campaign>(`/campaign/${data.id}`);
+    const token = await getToken();
+    const c = await alphaAIFetch<Campaign>(`/campaign/${data.id}`, {}, token);
     return normalizeCampaign(c);
   });
 
@@ -74,7 +80,8 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
-    return alphaAIFetch<CampaignProgress>(`/campaign/${data.id}/progress`);
+    const token = await getToken();
+    return alphaAIFetch<CampaignProgress>(`/campaign/${data.id}/progress`, {}, token);
   });
 
 // ── Campaign runs (leads table) ────────────────────────────────
@@ -82,8 +89,11 @@ export const getCampaignRuns = createServerFn({ method: "GET" })
   .inputValidator((d) => IdInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     const res = await alphaAIFetch<Run[] | OrgRunsResponse>(
       `/campaign/${data.id}/runs`,
+      {},
+      token,
     );
     return Array.isArray(res) ? res : res.runs;
   });
@@ -98,9 +108,10 @@ export const controlCampaign = createServerFn({ method: "POST" })
   .inputValidator((d) => actionInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     await alphaAIFetch(`/campaign/${data.id}/${data.action}`, {
       method: "POST",
-    });
+    }, token);
     return { ok: true as const };
   });
 
@@ -111,7 +122,7 @@ const CreateCampaignInput = z.object({
   file_key: z.string().min(1),
   max_concurrent_calls: z.number().int().min(1).max(50),
   retry_count: z.number().int().min(0).max(10),
-  retry_delay_minutes: z.number().int().min(0).max(1440),
+  retry_delay_minutes: z.number().int().min(0).max,
   call_start_time: z.string(),
   call_end_time: z.string(),
   call_days: z.array(z.string()).min(1),
@@ -122,10 +133,11 @@ export const createCampaign = createServerFn({ method: "POST" })
   .inputValidator((d) => CreateCampaignInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     return alphaAIFetch<Campaign>("/campaign/", {
       method: "POST",
       body: JSON.stringify(data),
-    });
+    }, token);
   });
 
 // ── Org runs (calls analytics) ────────────────────────────────
@@ -145,12 +157,15 @@ export const getRuns = createServerFn({ method: "GET" })
   .inputValidator((d) => RunsListInput.parse(d ?? {}))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     const params = new URLSearchParams();
     Object.entries(data).forEach(([k, v]) => {
       if (v !== undefined && v !== "") params.set(k, String(v));
     });
     return alphaAIFetch<OrgRunsResponse>(
       `/organizations/usage/runs?${params.toString()}`,
+      {},
+      token,
     );
   });
 
@@ -164,8 +179,9 @@ export const getRun = createServerFn({ method: "GET" })
   .inputValidator((d) => RunDetailInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     const wf = data.workflowId ? `?workflow_id=${data.workflowId}` : "";
-    return alphaAIFetch<Run>(`/run/${data.runId}${wf}`);
+    return alphaAIFetch<Run>(`/run/${data.runId}${wf}`, {}, token);
   });
 
 // ── Upload presign ────────────────────────────────────────────
@@ -178,9 +194,11 @@ export const presignUpload = createServerFn({ method: "POST" })
   .inputValidator((d) => PresignInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const token = await getToken();
     return alphaAIFetch<{ upload_url: string; file_key: string }>(
       "/upload/presign",
       { method: "POST", body: JSON.stringify(data) },
+      token,
     );
   });
 
@@ -191,8 +209,11 @@ export const getTranscript = createServerFn({ method: "GET" })
   .inputValidator((d) => TranscriptInput.parse(d))
   .handler(async ({ data }) => {
     await requireUser();
+    const apiToken = await getToken();
     const raw = await alphaAIFetch<any>(
       `/public/download/workflow/${data.token}/transcript`,
+      {},
+      apiToken,
     );
     return { transcript: raw as any };
   });

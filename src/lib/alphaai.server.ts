@@ -1,11 +1,9 @@
-import { useSession } from "@tanstack/react-start/server";
-
 /**
  * Server-only AlphaAI API client.
  * NEVER import this file from client code.
  *
- * Reads the per-user JWT from the TanStack Start session cookie
- * and uses it as the Bearer token.
+ * The token is passed in by the caller (server function) to ensure
+ * we have the request context.  This avoids session read issues.
  */
 
 export class AlphaAIError extends Error {
@@ -18,27 +16,10 @@ function getBaseUrl(): string {
   return (process.env.ALPHAAI_API_BASE_URL ?? "").replace(/\/$/, "");
 }
 
-async function getTokenWithSession(): Promise<string | undefined> {
-  try {
-    const SESSION_CONFIG = {
-      password: process.env.SESSION_SECRET!,
-      name: "mitadt-session",
-      maxAge: 60 * 60 * 24 * 7,
-      cookie: { httpOnly: true, sameSite: "lax" as const, secure: true, path: "/" },
-    };
-
-    const session = useSession<{ token?: string }>(SESSION_CONFIG);
-    console.log("[alphaai] Session data:", JSON.stringify(session.data));
-    return session.data?.token;
-  } catch (e) {
-    console.error("[alphaai] Session read error:", e);
-    return undefined;
-  }
-}
-
 export async function alphaAIFetch<T = unknown>(
   path: string,
   init: RequestInit = {},
+  token?: string,
 ): Promise<T> {
   const base = getBaseUrl();
   if (!base) {
@@ -49,7 +30,6 @@ export async function alphaAIFetch<T = unknown>(
   }
 
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
-  const token = await getTokenWithSession();
 
   console.log("[alphaai] alphaAIFetch:", path, "token:", token ? "present" : "MISSING");
 
@@ -84,25 +64,6 @@ export async function alphaAIFetch<T = unknown>(
       body && typeof body === "object" && "detail" in body
         ? (body as { detail: unknown }).detail
         : body;
-
-    // 401 or "Invalid or expired token" → clear the session token
-    const isExpired =
-      res.status === 401 ||
-      (typeof detail === "string" &&
-        detail.toLowerCase().includes("invalid or expired token"));
-
-    if (isExpired) {
-      try {
-        const SESSION_CONFIG = {
-          password: process.env.SESSION_SECRET!,
-          name: "mitadt-session",
-          maxAge: 60 * 60 * 24 * 7,
-          cookie: { httpOnly: true, sameSite: "lax" as const, secure: true, path: "/" },
-        };
-        const session = useSession<{ token?: string }>(SESSION_CONFIG);
-        await session.update({ token: undefined });
-      } catch { /* best-effort clear */ }
-    }
 
     throw new AlphaAIError(
       typeof detail === "string" ? detail : `AlphaAI ${res.status}`,
