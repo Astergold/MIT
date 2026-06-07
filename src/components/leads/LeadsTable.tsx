@@ -269,7 +269,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
           <tbody>
             {paged.map((r, i) => {
               const s = leadStatus(r);
-              const hasRecording = r.public_access_token && r.recording_url;
+              const hasRecording = !!r.recording_url;
               return (
                 <tr
                   key={r.id}
