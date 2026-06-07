@@ -73,3 +73,48 @@ export async function alphaAIFetch<T = unknown>(
 
   return body as T;
 }
+
+/**
+ * Fetch plain text response (for transcripts, etc).
+ * Does NOT try to parse as JSON - returns the raw text.
+ */
+export async function alphaFetchText(
+  path: string,
+  init: RequestInit = {},
+  token?: string,
+): Promise<string> {
+  const base = getBaseUrl();
+  if (!base) {
+    throw new AlphaAIError(
+      "ALPHAAI_API_BASE_URL is not configured on the server.",
+      500,
+    );
+  }
+
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const headers: Record<string, string> = {
+    Accept: "text/plain",
+    ...(init.headers as Record<string, string> | undefined),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch (e) {
+    throw new AlphaAIError(
+      `Could not reach AlphaAI server: ${(e as Error).message}`,
+      503,
+    );
+  }
+
+  if (!res.ok) {
+    throw new AlphaAIError(`AlphaAI ${res.status}`, res.status);
+  }
+
+  return res.text();
+}

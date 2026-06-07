@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { alphaAIFetch } from "./alphaai.server";
+import { alphaAIFetch, alphaFetchText } from "./alphaai.server";
 import { requireUser, getToken } from "./session.server";
 import type {
   Agent,
@@ -210,10 +210,10 @@ export const getTranscript = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireUser();
     const apiToken = await getToken();
-    const raw = await alphaAIFetch<any>(
+    const transcript = await alphaFetchText(
       `/public/download/workflow/${data.token}/transcript`,
       {},
       apiToken,
     );
-    return { transcript: raw as any };
+    return { transcript };
   });

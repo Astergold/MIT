@@ -69,14 +69,22 @@ function RunModal({ run, onClose }: RunModalProps) {
         if (result.public_access_token) {
           try {
             const trResult = await getTrFn({ data: { token: result.public_access_token } });
-            const messages = Array.isArray(trResult?.transcript)
-              ? trResult.transcript
-              : Array.isArray(trResult?.messages)
-              ? trResult.messages
-              : [];
-
-            if (!cancelled && messages.length > 0) {
-              setTranscript(messages);
+            const rawText = trResult?.transcript as string | undefined;
+            if (rawText) {
+              const messages: Array<{ role: string; text: string; timestamp?: string }> = [];
+              rawText.split("\n").forEach((line) => {
+                const match = line.match(/^\[([^\]]+)\]\s+(assistant|user):\s+(.*)$/);
+                if (match) {
+                  messages.push({
+                    role: match[2] === "assistant" ? "agent" : "user",
+                    text: match[3],
+                    timestamp: match[1],
+                  });
+                }
+              });
+              if (!cancelled && messages.length > 0) {
+                setTranscript(messages);
+              }
             }
           } catch (e) {
             console.error("Failed to load transcript:", e);
