@@ -17,6 +17,30 @@ function leadStatus(r: Run) {
   return dispositionBadge(r.disposition);
 }
 
+function leadStatusBadge(value: string | null | undefined) {
+  if (!value) return <span className="text-mitadt-text-muted">—</span>;
+  const v = String(value).toUpperCase();
+  if (v === "HOT")
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-300">
+        HOT
+      </span>
+    );
+  if (v === "WARM")
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-300">
+        WARM
+      </span>
+    );
+  if (v === "COLD")
+    return (
+      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
+        COLD
+      </span>
+    );
+  return <span className="text-mitadt-text-muted">—</span>;
+}
+
 function exportCsv(filename: string, rows: Record<string, any>[]) {
   if (!rows.length) return;
   const headerSet = new Set<string>();
@@ -54,7 +78,6 @@ function RunModal({ run, onClose }: RunModalProps) {
   const customerName = (run.initial_context?.customer_name as string) ?? "Unknown";
   const phone = run.called_number ?? (run.initial_context?.phone_number as string) ?? "—";
 
-  // Fetch run details and transcript
   useMemo(() => {
     let cancelled = false;
     async function fetchRun() {
@@ -65,7 +88,6 @@ function RunModal({ run, onClose }: RunModalProps) {
         if (cancelled) return;
         setRunDetails(result as Run);
 
-        // Fetch transcript if available
         if (result.public_access_token) {
           try {
             const trResult = await getTrFn({ data: { token: result.public_access_token } });
@@ -142,14 +164,12 @@ function RunModal({ run, onClose }: RunModalProps) {
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(80vh-200px)]">
-          {/* Section 1: Audio Player */}
           {runDetails?.recording_public_url && (
             <div>
               <audio controls className="w-full" src={runDetails.recording_public_url} />
             </div>
           )}
 
-          {/* Section 2: Transcript */}
           {transcript && transcript.length > 0 ? (
             <div>
               <h3 className="font-semibold text-mitadt-text-primary mb-3">Transcript</h3>
@@ -185,7 +205,6 @@ function RunModal({ run, onClose }: RunModalProps) {
           )}
         </div>
 
-        {/* Section 3: Action Buttons */}
         <div className="border-t border-mitadt-border p-4 flex gap-3">
           {runDetails?.recording_public_url && (
             <a
@@ -226,7 +245,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
     const gathered = new Set<string>();
     runs.forEach((r) => {
       Object.keys(r.initial_context ?? {}).forEach((k) => init.add(k));
-      Object.keys(r.gathered_context ?? {}).forEach((k) => gathered.add(k));
+      Object.keys(r.gathered_context ?? {}).forEach((k) => {
+        if (k !== "lead_status") gathered.add(k);
+      });
     });
     const order = DASHBOARD_CONFIG.EXPECTED_CSV_COLUMNS;
     const sortedInit = [
@@ -319,6 +340,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
               "leads.csv",
               filtered.map((r) => ({
                 phone: r.called_number,
+                lead_status: (r.gathered_context?.lead_status as string) ?? "",
                 status: leadStatus(r).label,
                 duration_s: r.call_duration_seconds,
                 disposition: r.disposition,
@@ -328,10 +350,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                   : "",
                 ...(r.initial_context ?? {}),
                 ...Object.fromEntries(
-                  Object.entries(r.gathered_context ?? {}).map(([k, v]) => [
-                    `ai_${k}`,
-                    v,
-                  ]),
+                  Object.entries(r.gathered_context ?? {})
+                    .filter(([k]) => k !== "lead_status")
+                    .map(([k, v]) => [`ai_${k}`, v]),
                 ),
               })),
             )
@@ -348,6 +369,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
             <tr>
               <th className="px-3 py-3">#</th>
               <th className="px-3 py-3">Phone</th>
+              <th className="px-3 py-3 text-mitadt-purple">(AI) Lead Status</th>
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3">Duration</th>
               <th className="px-3 py-3">Recording</th>
@@ -402,6 +424,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
                     </Link>
                   </td>
                   <td className="px-3 py-2">
+                    {leadStatusBadge(r.gathered_context?.lead_status as string)}
+                  </td>
+                  <td className="px-3 py-2">
                     <StatusBadge
                       status={s.status}
                       label={s.label}
@@ -443,7 +468,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
             {paged.length === 0 && (
               <tr>
                 <td
-                  colSpan={5 + dynamicKeys.sortedInit.length + dynamicKeys.gathered.length}
+                  colSpan={7 + dynamicKeys.sortedInit.length + dynamicKeys.gathered.length}
                   className="px-3 py-12 text-center text-sm text-mitadt-text-muted"
                 >
                   No leads found.
