@@ -81,7 +81,17 @@ export const getCampaignProgress = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireUser();
     const token = await getToken();
-    return alphaAIFetch<CampaignProgress>(`/campaign/${data.id}/progress`, {}, token);
+    const raw = await alphaAIFetch<any>(`/campaign/${data.id}/progress`, {}, token);
+    return {
+      campaign_id: data.id,
+      total_contacts: raw.total_rows ?? 0,
+      completed: raw.processed_rows ?? 0,
+      pending: (raw.total_rows ?? 0) - (raw.processed_rows ?? 0),
+      failed: 0,
+      success_rate: (raw.progress_percentage ?? 0) / 100,
+      status: raw.state ?? "unknown",
+      estimated_completion_minutes: raw.estimated_completion_minutes ?? null,
+    };
   });
 
 // ── Campaign runs (leads table) ────────────────────────────────
