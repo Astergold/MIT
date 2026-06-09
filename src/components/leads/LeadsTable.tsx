@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpDown, Download, Search, Play, X, Loader2 } from "lucide-react";
+import { ArrowUpDown, Download, Search, Play, X, Loader2, SlidersHorizontal } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { DASHBOARD_CONFIG } from "@/config/dashboard.config";
 import { StatusBadge, dispositionBadge } from "@/components/ui/StatusBadge";
@@ -232,13 +232,142 @@ function RunModal({ run, onClose }: RunModalProps) {
   );
 }
 
+const ALL_STATUSES = ["HOT", "WARM", "COLD"] as const;
+
+function FilterPanel({
+  runs,
+  selectedStatuses,
+  onToggleStatus,
+  collapsed,
+  onToggleCollapse,
+}: {
+  runs: Run[];
+  selectedStatuses: Set<string>;
+  onToggleStatus: (s: string) => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}) {
+  const isFiltered = selectedStatuses.size < ALL_STATUSES.length;
+
+  // Count leads per status
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { HOT: 0, WARM: 0, COLD: 0 };
+    runs.forEach((r) => {
+      const v = String(r.gathered_context?.lead_status ?? "").toUpperCase();
+      if (v in c) c[v]++;
+    });
+    return c;
+  }, [runs]);
+
+  if (collapsed) {
+    return (
+      <div className="flex w-10 flex-col items-center border-r border-mitadt-border bg-white py-3">
+        <button
+          onClick={onToggleCollapse}
+          className="relative rounded p-1.5 text-mitadt-text-muted hover:bg-mitadt-bg-secondary hover:text-mitadt-purple"
+          title="Show filters"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {isFiltered && (
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-mitadt-purple" />
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-52 shrink-0 border-r border-mitadt-border bg-white p-3">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-sm font-semibold text-mitadt-text-primary">Filters</span>
+        <button
+          onClick={onToggleCollapse}
+          className="relative rounded p-1 text-mitadt-text-muted hover:bg-mitadt-bg-secondary hover:text-mitadt-purple"
+          title="Hide filters"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {isFiltered && (
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-mitadt-purple" />
+          )}
+        </button>
+      </div>
+
+      {/* Lead Status filter */}
+      <div className="mb-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-mitadt-text-muted">
+          Lead Status
+        </p>
+        <div className="space-y-1.5">
+          {ALL_STATUSES.map((s) => {
+            const checked = selectedStatuses.has(s);
+            const badgeClass =
+              s === "HOT"
+                ? "bg-red-100 text-red-700 border border-red-300"
+                : s === "WARM"
+                ? "bg-orange-100 text-orange-700 border border-orange-300"
+                : "bg-blue-100 text-blue-700 border border-blue-300";
+            return (
+              <label
+                key={s}
+                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-mitadt-bg-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleStatus(s)}
+                  className="h-3.5 w-3.5 accent-mitadt-purple"
+                />
+                <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${badgeClass}`}>
+                  {s}
+                </span>
+                <span className="ml-auto text-xs text-mitadt-text-muted">
+                  {counts[s] ?? 0}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="my-3 border-t border-mitadt-border" />
+
+      {/* Placeholder filters */}
+      <div className="space-y-4 opacity-50">
+        {["Call Outcome", "Disposition", "Date Range"].map((label) => (
+          <div key={label}>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-mitadt-text-muted">
+              {label}
+            </p>
+            <p className="text-xs italic text-mitadt-text-muted">Coming soon</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LeadsTable({ runs }: { runs: Run[] }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [audioRun, setAudioRun] = useState<Run | null>(null);
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(
+    new Set(["HOT", "WARM", "COLD"]),
+  );
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
   const pageSize = DASHBOARD_CONFIG.DEFAULT_PAGE_SIZE;
+
+  function toggleStatus(s: string) {
+    setSelectedStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      setPage(1);
+      return next;
+    });
+  }
 
   const dynamicKeys = useMemo(() => {
     const init = new Set<string>();
@@ -264,40 +393,40 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
     let rows = q
       ? runs.filter((r) =>
           (r.called_number ?? "").toLowerCase().includes(q) ||
-          JSON.stringify(r.initial_context ?? {})
-            .toLowerCase()
-            .includes(q),
+          JSON.stringify(r.initial_context ?? {}).toLowerCase().includes(q),
         )
       : [...runs];
+
+    // Lead status filter — only apply if not all selected
+    if (selectedStatuses.size < ALL_STATUSES.length) {
+      rows = rows.filter((r) => {
+        const ls = String(r.gathered_context?.lead_status ?? "").toUpperCase();
+        if (!ls) return true; // always show rows with no lead status
+        return selectedStatuses.has(ls);
+      });
+    }
+
     rows.sort((a, b) => {
       const av: any = (a as any)[sortKey] ?? a.initial_context?.[sortKey];
       const bv: any = (b as any)[sortKey] ?? b.initial_context?.[sortKey];
       if (av == null) return 1;
       if (bv == null) return -1;
-      const cmp = String(av).localeCompare(String(bv), undefined, {
-        numeric: true,
-      });
+      const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true });
       return sortDir === "asc" ? cmp : -cmp;
     });
     return rows;
-  }, [runs, search, sortKey, sortDir]);
+  }, [runs, search, sortKey, sortDir, selectedStatuses]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   function toggleSort(k: string) {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(k);
-      setSortDir("asc");
-    }
+    else { setSortKey(k); setSortDir("asc"); }
   }
 
   function renderCell(r: Run, key: string, source: "init" | "ai") {
-    const v =
-      source === "init"
-        ? r.initial_context?.[key]
-        : r.gathered_context?.[key];
+    const v = source === "init" ? r.initial_context?.[key] : r.gathered_context?.[key];
     if (v == null || v === "") return <span className="text-mitadt-text-muted">—</span>;
     if (key === "agreed" || key === "interested") {
       const yes = String(v).toLowerCase() === "true" || v === true || v === "yes";
@@ -308,200 +437,202 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
         />
       );
     }
-    if (typeof v === "object") {
-      return <span className="text-xs">{JSON.stringify(v)}</span>;
-    }
+    if (typeof v === "object") return <span className="text-xs">{JSON.stringify(v)}</span>;
     return <span>{String(v)}</span>;
   }
 
   return (
     <div className="overflow-hidden rounded-xl border border-mitadt-border bg-white shadow-sm">
-      {audioRun && (
-        <RunModal run={audioRun} onClose={() => setAudioRun(null)} />
-      )}
-      <div className="flex flex-col items-stretch gap-3 border-b border-mitadt-border p-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mitadt-text-muted" />
-          <input
-            type="search"
-            placeholder="Search by phone or context…"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="w-full rounded-lg border border-mitadt-border pl-9 pr-3 py-2 text-sm outline-none focus:border-mitadt-purple focus:ring-2 focus:ring-mitadt-purple/20"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            exportCsv(
-              "leads.csv",
-              filtered.map((r) => ({
-                phone: r.called_number,
-                lead_status: (r.gathered_context?.lead_status as string) ?? "",
-                status: leadStatus(r).label,
-                duration_s: r.call_duration_seconds,
-                disposition: r.disposition,
-                created_at: r.created_at,
-                recording_url: r.recording_url
-                  ? `${window.location.origin}/r/${r.workflow_id}/${r.id}`
-                  : "",
-                ...(r.initial_context ?? {}),
-                ...Object.fromEntries(
-                  Object.entries(r.gathered_context ?? {})
-                    .filter(([k]) => k !== "lead_status")
-                    .map(([k, v]) => [`ai_${k}`, v]),
-                ),
-              })),
-            )
-          }
-          className="inline-flex items-center gap-1.5 rounded-lg border border-mitadt-purple px-3 py-2 text-sm font-semibold text-mitadt-purple hover:bg-mitadt-purple hover:text-white"
-        >
-          <Download className="h-4 w-4" /> Export CSV
-        </button>
-      </div>
+      {audioRun && <RunModal run={audioRun} onClose={() => setAudioRun(null)} />}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] text-sm">
-          <thead className="bg-mitadt-bg-secondary text-left text-xs uppercase tracking-wider text-mitadt-text-muted">
-            <tr>
-              <th className="px-3 py-3">#</th>
-              <th className="px-3 py-3">Phone</th>
-              <th className="px-3 py-3 text-mitadt-purple">(AI) Lead Status</th>
-              <th className="px-3 py-3">Status</th>
-              <th className="px-3 py-3">Duration</th>
-              <th className="px-3 py-3">Recording</th>
-              <th
-                className="cursor-pointer px-3 py-3"
-                onClick={() => toggleSort("created_at")}
-              >
-                <span className="inline-flex items-center gap-1">
-                  Call Time <ArrowUpDown className="h-3 w-3" />
-                </span>
-              </th>
-              {dynamicKeys.sortedInit.map((k) => (
-                <th
-                  key={"i-" + k}
-                  className="cursor-pointer px-3 py-3"
-                  onClick={() => toggleSort(k)}
-                >
-                  {k.replace(/_/g, " ")}
-                </th>
-              ))}
-              {dynamicKeys.gathered.map((k) => (
-                <th
-                  key={"a-" + k}
-                  className="px-3 py-3 text-mitadt-purple"
-                >
-                  (AI) {k.replace(/_/g, " ")}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paged.map((r, i) => {
-              const s = leadStatus(r);
-              const hasRecording = !!r.recording_url;
-              return (
-                <tr
-                  key={r.id}
-                  className="cursor-pointer border-t border-mitadt-border hover:bg-mitadt-bg-secondary/50"
-                >
-                  <td className="px-3 py-2 text-xs text-mitadt-text-muted">
-                    {(page - 1) * pageSize + i + 1}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Link
-                      to="/dashboard/calls/$runId"
-                      params={{ runId: String(r.id) }}
-                      className="font-mono text-xs text-mitadt-purple hover:underline"
-                    >
-                      {r.called_number ??
-                        (r.initial_context?.phone_number as string) ??
-                        "—"}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2">
-                    {leadStatusBadge(r.gathered_context?.lead_status as string)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <StatusBadge
-                      status={s.status}
-                      label={s.label}
-                      pulse={"pulse" in s ? (s as any).pulse : false}
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    {formatDuration(r.call_duration_seconds)}
-                  </td>
-                  <td className="px-3 py-2">
-                    {hasRecording ? (
-                      <button
-                        onClick={() => setAudioRun(r)}
-                        className="inline-flex items-center justify-center rounded p-1 text-mitadt-purple hover:bg-mitadt-purple/10"
-                        title="Play recording"
-                      >
-                        <Play className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <span className="text-mitadt-text-muted">—</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    {formatDate(r.created_at)}
-                  </td>
+      {/* Main layout: filter panel + table */}
+      <div className="flex">
+        <FilterPanel
+          runs={runs}
+          selectedStatuses={selectedStatuses}
+          onToggleStatus={toggleStatus}
+          collapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((v) => !v)}
+        />
+
+        {/* Right side: search bar + table */}
+        <div className="min-w-0 flex-1">
+          {/* Search + export bar */}
+          <div className="flex flex-col items-stretch gap-3 border-b border-mitadt-border p-4 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mitadt-text-muted" />
+              <input
+                type="search"
+                placeholder="Search by phone or context…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="w-full rounded-lg border border-mitadt-border pl-9 pr-3 py-2 text-sm outline-none focus:border-mitadt-purple focus:ring-2 focus:ring-mitadt-purple/20"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                exportCsv(
+                  "leads.csv",
+                  filtered.map((r) => ({
+                    phone: r.called_number,
+                    lead_status: (r.gathered_context?.lead_status as string) ?? "",
+                    status: leadStatus(r).label,
+                    duration_s: r.call_duration_seconds,
+                    disposition: r.disposition,
+                    created_at: r.created_at,
+                    recording_url: r.recording_url
+                      ? `${window.location.origin}/r/${r.workflow_id}/${r.id}`
+                      : "",
+                    ...(r.initial_context ?? {}),
+                    ...Object.fromEntries(
+                      Object.entries(r.gathered_context ?? {})
+                        .filter(([k]) => k !== "lead_status")
+                        .map(([k, v]) => [`ai_${k}`, v]),
+                    ),
+                  })),
+                )
+              }
+              className="inline-flex items-center gap-1.5 rounded-lg border border-mitadt-purple px-3 py-2 text-sm font-semibold text-mitadt-purple hover:bg-mitadt-purple hover:text-white"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-sm">
+              <thead className="bg-mitadt-bg-secondary text-left text-xs uppercase tracking-wider text-mitadt-text-muted">
+                <tr>
+                  <th className="px-3 py-3">#</th>
+                  <th className="px-3 py-3">Phone</th>
+                  <th className="px-3 py-3 text-mitadt-purple">(AI) Lead Status</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Duration</th>
+                  <th className="px-3 py-3">Recording</th>
+                  <th
+                    className="cursor-pointer px-3 py-3"
+                    onClick={() => toggleSort("created_at")}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Call Time <ArrowUpDown className="h-3 w-3" />
+                    </span>
+                  </th>
                   {dynamicKeys.sortedInit.map((k) => (
-                    <td key={"i-" + k} className="px-3 py-2">
-                      {renderCell(r, k, "init")}
-                    </td>
+                    <th
+                      key={"i-" + k}
+                      className="cursor-pointer px-3 py-3"
+                      onClick={() => toggleSort(k)}
+                    >
+                      {k.replace(/_/g, " ")}
+                    </th>
                   ))}
                   {dynamicKeys.gathered.map((k) => (
-                    <td key={"a-" + k} className="px-3 py-2">
-                      {renderCell(r, k, "ai")}
-                    </td>
+                    <th key={"a-" + k} className="px-3 py-3 text-mitadt-purple">
+                      (AI) {k.replace(/_/g, " ")}
+                    </th>
                   ))}
                 </tr>
-              );
-            })}
-            {paged.length === 0 && (
-              <tr>
-                <td
-                  colSpan={7 + dynamicKeys.sortedInit.length + dynamicKeys.gathered.length}
-                  className="px-3 py-12 text-center text-sm text-mitadt-text-muted"
-                >
-                  No leads found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {paged.map((r, i) => {
+                  const s = leadStatus(r);
+                  const hasRecording = !!r.recording_url;
+                  return (
+                    <tr
+                      key={r.id}
+                      className="cursor-pointer border-t border-mitadt-border hover:bg-mitadt-bg-secondary/50"
+                    >
+                      <td className="px-3 py-2 text-xs text-mitadt-text-muted">
+                        {(page - 1) * pageSize + i + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Link
+                          to="/dashboard/calls/$runId"
+                          params={{ runId: String(r.id) }}
+                          className="font-mono text-xs text-mitadt-purple hover:underline"
+                        >
+                          {r.called_number ?? (r.initial_context?.phone_number as string) ?? "—"}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2">
+                        {leadStatusBadge(r.gathered_context?.lead_status as string)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <StatusBadge
+                          status={s.status}
+                          label={s.label}
+                          pulse={"pulse" in s ? (s as any).pulse : false}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        {formatDuration(r.call_duration_seconds)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {hasRecording ? (
+                          <button
+                            onClick={() => setAudioRun(r)}
+                            className="inline-flex items-center justify-center rounded p-1 text-mitadt-purple hover:bg-mitadt-purple/10"
+                            title="Play recording"
+                          >
+                            <Play className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <span className="text-mitadt-text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-xs">{formatDate(r.created_at)}</td>
+                      {dynamicKeys.sortedInit.map((k) => (
+                        <td key={"i-" + k} className="px-3 py-2">
+                          {renderCell(r, k, "init")}
+                        </td>
+                      ))}
+                      {dynamicKeys.gathered.map((k) => (
+                        <td key={"a-" + k} className="px-3 py-2">
+                          {renderCell(r, k, "ai")}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+                {paged.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7 + dynamicKeys.sortedInit.length + dynamicKeys.gathered.length}
+                      className="px-3 py-12 text-center text-sm text-mitadt-text-muted"
+                    >
+                      No leads found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="flex items-center justify-between border-t border-mitadt-border px-4 py-3 text-xs text-mitadt-text-muted">
-        <span>
-          Showing {(page - 1) * pageSize + 1}–
-          {Math.min(page * pageSize, filtered.length)} of {filtered.length} leads
-        </span>
-        <div className="flex gap-1">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="rounded border border-mitadt-border px-2 py-1 disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <span className="px-2 py-1">
-            {page} / {totalPages}
-          </span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="rounded border border-mitadt-border px-2 py-1 disabled:opacity-50"
-          >
-            Next
-          </button>
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t border-mitadt-border px-4 py-3 text-xs text-mitadt-text-muted">
+            <span>
+              Showing {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}–
+              {Math.min(page * pageSize, filtered.length)} of {filtered.length} leads
+            </span>
+            <div className="flex gap-1">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="rounded border border-mitadt-border px-2 py-1 disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <span className="px-2 py-1">{page} / {totalPages}</span>
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="rounded border border-mitadt-border px-2 py-1 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
