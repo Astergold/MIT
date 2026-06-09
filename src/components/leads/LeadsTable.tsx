@@ -232,7 +232,7 @@ function RunModal({ run, onClose }: RunModalProps) {
   );
 }
 
-const ALL_STATUSES = ["HOT", "WARM", "COLD"] as const;
+const ALL_STATUSES = ["HOT", "WARM", "COLD", "OTHERS"] as const;
 
 function FilterPanel({
   runs,
@@ -251,10 +251,14 @@ function FilterPanel({
 
   // Count leads per status
   const counts = useMemo(() => {
-    const c: Record<string, number> = { HOT: 0, WARM: 0, COLD: 0 };
+    const c: Record<string, number> = { HOT: 0, WARM: 0, COLD: 0, OTHERS: 0 };
     runs.forEach((r) => {
-      const v = String(r.gathered_context?.lead_status ?? "").toUpperCase();
-      if (v in c) c[v]++;
+      const v = String(r.gathered_context?.lead_status ?? "").toUpperCase().trim();
+      if (v === "HOT" || v === "WARM" || v === "COLD") {
+        c[v]++;
+      } else {
+        c["OTHERS"]++;
+      }
     });
     return c;
   }, [runs]);
@@ -306,7 +310,9 @@ function FilterPanel({
                 ? "bg-red-100 text-red-700 border border-red-300"
                 : s === "WARM"
                 ? "bg-orange-100 text-orange-700 border border-orange-300"
-                : "bg-blue-100 text-blue-700 border border-blue-300";
+                : s === "COLD"
+                ? "bg-blue-100 text-blue-700 border border-blue-300"
+                : "bg-gray-100 text-gray-600 border border-gray-300";
             return (
               <label
                 key={s}
@@ -354,7 +360,7 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [audioRun, setAudioRun] = useState<Run | null>(null);
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(
-    new Set(["HOT", "WARM", "COLD"]),
+    new Set(["HOT", "WARM", "COLD", "OTHERS"]),
   );
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const pageSize = DASHBOARD_CONFIG.DEFAULT_PAGE_SIZE;
@@ -400,9 +406,9 @@ export function LeadsTable({ runs }: { runs: Run[] }) {
     // Lead status filter — only apply if not all selected
     if (selectedStatuses.size < ALL_STATUSES.length) {
       rows = rows.filter((r) => {
-        const ls = String(r.gathered_context?.lead_status ?? "").toUpperCase();
-        if (!ls) return true; // always show rows with no lead status
-        return selectedStatuses.has(ls);
+        const ls = String(r.gathered_context?.lead_status ?? "").toUpperCase().trim();
+        const bucket = ls === "HOT" || ls === "WARM" || ls === "COLD" ? ls : "OTHERS";
+        return selectedStatuses.has(bucket);
       });
     }
 
