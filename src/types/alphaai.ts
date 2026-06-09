@@ -59,6 +59,20 @@ export interface OrgRunsResponse {
   total_pages: number;
 }
 
+export interface CampaignRunStats {
+  total_contacts: number;
+  call_pickup: number;
+  failed_calls: number;
+  qualified: number;
+  pending: number;
+}
+
+export interface CampaignRunsResponse {
+  runs: Run[];
+  total_count: number;
+  stats: CampaignRunStats;
+}
+
 export interface Agent {
   id: number;
   uuid: string;

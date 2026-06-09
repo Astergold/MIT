@@ -100,12 +100,52 @@ export const getCampaignRuns = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireUser();
     const token = await getToken();
-    const res = await alphaAIFetch<Run[] | OrgRunsResponse>(
-      `/campaign/${data.id}/runs`,
+
+    const firstPage = await alphaAIFetch<any>(
+      `/campaign/${data.id}/runs?page=1&limit=100`,
       {},
-      token,
+      token
     );
-    return Array.isArray(res) ? res : res.runs;
+
+    const totalPages: number = firstPage.total_pages ?? 1;
+    let allRuns = [...(firstPage.runs ?? [])];
+
+    for (let page = 2; page <= totalPages; page++) {
+      const pageData = await alphaAIFetch<any>(
+        `/campaign/${data.id}/runs?page=${page}&limit=100`,
+        {},
+        token
+      );
+      allRuns = [...allRuns, ...(pageData.runs ?? [])];
+    }
+
+    let call_pickup = 0;
+    let failed_calls = 0;
+    let qualified = 0;
+
+    for (const run of allRuns) {
+      const tags: string[] = run.gathered_context?.call_tags ?? [];
+      if (tags.includes("not_connected")) {
+        failed_calls++;
+      } else if (tags.length > 0) {
+        call_pickup++;
+        if (tags.includes("user_qualified")) qualified++;
+      }
+    }
+
+    const total = firstPage.total_count ?? allRuns.length;
+
+    return {
+      runs: allRuns,
+      total_count: total,
+      stats: {
+        total_contacts: total,
+        call_pickup,
+        failed_calls,
+        qualified,
+        pending: total - call_pickup - failed_calls,
+      },
+    };
   });
 
 // ── Campaign control ───────────────────────────────────────────
